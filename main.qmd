@@ -1,9 +1,10 @@
 ---
 title: "Abortion and Polarization"
 subtitle: "An agent-based model of framing and opinion dynamics"
-author: "Vanessa Filip 
-  Soma Breitner
-  Zoi Asimakopoulou"
+author: 
+- Vanessa Filip 
+- Soma Breitner
+- Zoi Asimakopoulou
 format: html
 bibliography: references.bib
 ---
