@@ -1,0 +1,41 @@
+---
+title: "Abortion and Polarization"
+subtitle: "An agent-based model of framing and opinion dynamics"
+author: "Vanessa Filip 
+  Soma Breitner
+  Zoi Asimakopoulou"
+format: html
+bibliography: references.bib
+---
+
+## Introduction
+
+*What the project is about and the main research question.*
+
+## Setup
+
+```{r setup}
+#| message: false
+# Load all functions from src/ and analysis/
+for (f in list.files(c("src", "analysis"), pattern = "\\.R$", full.names = TRUE)) {
+  source(f)
+}
+```
+
+## 1. The simulation
+
+*How the model works: agents, thresholds, framing.*
+
+## 2. Running the experiments
+
+*Run the simulation across framing conditions and seeds.*
+
+## 3. Analysis
+
+*Regression of polarization on framing, with plots.*
+
+## 4. Discussion
+
+*What the results mean and the model's limitations.*
+
+## References
