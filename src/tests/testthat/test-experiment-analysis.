@@ -1,0 +1,89 @@
+library(testthat)
+library(ggplot2)
+source(file.path("..", "..", "src", "experiment.R"), local = TRUE)
+source(file.path("..", "..", "src", "analysis.R"), local = TRUE)
+source(file.path("..", "..", "src", "plots.R"), local = TRUE)
+
+# Tiny stand-in for the real model (defined here, not shipped in src/).
+# Each seed has its own baseline (shared across conditions, like a shared
+# starting population); the campaign effect is known.
+run_simulation <- function(p, keep_history = FALSE) {
+  set.seed(p$seed)
+  baseline <- runif(1, 0.3, 0.6)
+  set.seed(p$seed * 1000 + round(p$campaign_position * 10) + p$backlash)
+  effect <- 0.1 * (p$campaign_position > 0.5)
+  value <- baseline + effect + rnorm(1, 0, 0.01)
+  list(measures = data.frame(time = 1:3,
+         dispersion_no_zealots = c(0.5, 0.45, value),
+         extreme_share_no_zealots = 0.1, group_gap_no_zealots = 0.3),
+       settings = p)
+}
+
+base <- list(n = 50, steps = 3)
+conds <- expand.grid(campaign_position = c(0.3, 1), backlash = c(FALSE, TRUE))
+
+test_that("run_experiment returns one final row per condition and run", {
+  res <- run_experiment(conds, base, n_runs = 5, progress = FALSE)
+  expect_equal(nrow(res$final), 4 * 5)
+  expect_true(all(res$final$time == 3))
+  expect_equal(nrow(res$trajectories), 4 * 5 * 3)
+})
+
+test_that("same inputs give identical output", {
+  a <- run_experiment(conds, base, n_runs = 5, progress = FALSE)
+  b <- run_experiment(conds, base, n_runs = 5, progress = FALSE)
+  expect_identical(a, b)
+})
+
+test_that("run_experiment rejects a seed column in the conditions", {
+  bad <- cbind(conds, seed = 1)
+  expect_error(run_experiment(bad, base, n_runs = 2, progress = FALSE))
+})
+
+test_that("label_conditions errors on unknown positions", {
+  d <- data.frame(campaign_position = c(0.3, 0.5), backlash = c(FALSE, TRUE))
+  expect_error(label_conditions(d), "not in campaign_levels")
+})
+
+test_that("analysis recovers the known campaign effect", {
+  res <- run_experiment(conds, base, n_runs = 30, progress = FALSE)
+  fin <- label_conditions(res$final)
+  a <- run_analysis(fin)
+  b <- a$coefficients$estimate[a$coefficients$term == "campaignBroad"]
+  expect_equal(b, 0.1, tolerance = 0.01)
+  expect_equal(nrow(a$comparisons), 2)
+  expect_true(all(a$comparisons$difference > 0.08))
+})
+
+test_that("run terms are hidden from the coefficient table", {
+  res <- run_experiment(conds, base, n_runs = 10, progress = FALSE)
+  a <- run_analysis(label_conditions(res$final))
+  expect_false(any(grepl("factor\\(run\\)", a$coefficients$term)))
+  expect_equal(nrow(a$coefficients), 4)
+})
+
+test_that("pairing gives narrower intervals than ignoring the runs", {
+  res <- run_experiment(conds, base, n_runs = 30, progress = FALSE)
+  fin <- label_conditions(res$final)
+  paired <- tidy_coefficients(fit_model(fin, "dispersion_no_zealots"))
+  unpaired <- tidy_coefficients(
+    lm(dispersion_no_zealots ~ campaign * backlash, data = fin))
+  w <- function(x) with(x[x$term == "campaignBroad", ], conf_high - conf_low)
+  expect_lt(w(paired), w(unpaired))
+})
+
+test_that("compare_campaigns needs every run in both campaign groups", {
+  res <- run_experiment(conds, base, n_runs = 5, progress = FALSE)
+  fin <- label_conditions(res$final)
+  fin <- fin[!(fin$run == 3 & fin$campaign == "Broad"), ]
+  expect_error(compare_campaigns(fin, "dispersion_no_zealots"))
+})
+
+test_that("plots build and keep the SD capitalisation", {
+  res <- run_experiment(conds, base, n_runs = 5, progress = FALSE)
+  fin <- label_conditions(res$final)
+  a <- run_analysis(fin)
+  p <- plot_effects(a$coefficients)
+  expect_s3_class(p, "ggplot")
+  expect_match(p$labels$x, "Opinion SD")
+})
