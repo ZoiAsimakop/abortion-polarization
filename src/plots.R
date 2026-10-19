@@ -53,7 +53,7 @@ plot_effects <- function(coefficients, outcome_label = "Opinion SD (non-zealots)
   ggplot(d, aes(x = estimate, y = reorder(term, estimate))) +
     geom_vline(xintercept = 0, linetype = "dashed", colour = "grey50") +
     geom_pointrange(aes(xmin = conf_low, xmax = conf_high)) +
-    labs(x = paste("Effect on", tolower(outcome_label), "(95% CI)"), y = NULL,
+    labs(x = paste("Effect on", outcome_label, "(95% CI)"), y = NULL,
          title = "Model coefficients",
          subtitle = "Reference: narrow campaign, backlash off") +
     theme_minimal(base_size = 12)
