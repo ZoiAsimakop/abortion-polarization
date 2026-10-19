@@ -16,7 +16,8 @@
 #'   contain `seed`.
 #' @param base_params list of model parameters shared by all conditions.
 #' @param n_runs number of runs (seeds 1..n_runs) per condition. The same
-#'   seeds are used in every condition (paired comparison).
+#'   seeds are used in every condition, so run k is matched across
+#'   conditions (analysed as a paired comparison in analysis.R).
 #' @param progress print a progress line per condition?
 #' @return list(final, trajectories):
 #'   final        one row per run: condition settings + last time step
@@ -43,10 +44,8 @@ run_experiment <- function(conditions, base_params, n_runs = 100,
       p <- modifyList(base_params, c(as.list(cond), list(seed = s)))
       m <- run_simulation(p, keep_history = FALSE)$measures
       k <- k + 1L
-      finals[[k]] <- data.frame(cond, run = s, m[nrow(m), , drop = FALSE],
-                                row.names = NULL, check.names = FALSE)
-      trajectories[[k]] <- data.frame(cond, run = s, m,
-                                      row.names = NULL, check.names = FALSE)
+      finals[[k]] <- cbind(cond, run = s, m[nrow(m), , drop = FALSE])
+      trajectories[[k]] <- cbind(cond, run = s, m)
     }
   }
 
