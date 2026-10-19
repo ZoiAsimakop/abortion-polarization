@@ -17,6 +17,7 @@ bibliography: references.bib
 
 ```{r setup}
 #| message: false
+library(ggplot2)
 # Load all functions from src/ and analysis/
 for (f in list.files(c("src", "analysis"), pattern = "\\.R$", full.names = TRUE)) {
   source(f)
