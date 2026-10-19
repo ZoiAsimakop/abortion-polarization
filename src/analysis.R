@@ -28,12 +28,11 @@ label_conditions <- function(data,
   data
 }
 
-#' Cohen's d for two independent samples (pooled SD).
-cohens_d <- function(x, y) {
-  nx <- length(x)
-  ny <- length(y)
-  pooled <- sqrt(((nx - 1) * var(x) + (ny - 1) * var(y)) / (nx + ny - 2))
-  (mean(x) - mean(y)) / pooled
+#' Cohen's d for paired samples (d_z): mean of the within-run differences
+#' divided by the SD of those differences.
+cohens_d_paired <- function(x, y) {
+  diffs <- x - y
+  mean(diffs) / sd(diffs)
 }
 
 #' Mean, SD and n of the outcome per condition.
@@ -46,31 +45,43 @@ describe_outcome <- function(data, outcome) {
   out
 }
 
-#' Linear model: outcome ~ campaign * backlash.
+#' Linear model: outcome ~ campaign * backlash + run.
+#' Runs share seeds across conditions (same starting population), so `run`
+#' is included as a blocking factor. This removes the run-to-run noise that
+#' is shared between conditions and gives narrower confidence intervals.
 fit_model <- function(data, outcome) {
-  stopifnot(outcome %in% names(data))
-  lm(as.formula(paste(outcome, "~ campaign * backlash")), data = data)
+  stopifnot(outcome %in% names(data), "run" %in% names(data))
+  lm(as.formula(paste(outcome, "~ campaign * backlash + factor(run)")),
+     data = data)
 }
 
 #' Coefficients with 95% confidence intervals as a data.frame.
+#' The run (blocking) terms are left out; they are not of interest.
 tidy_coefficients <- function(fit) {
   ci <- confint(fit)
-  data.frame(term = rownames(ci), estimate = unname(coef(fit)),
-             conf_low = ci[, 1], conf_high = ci[, 2], row.names = NULL)
+  out <- data.frame(term = rownames(ci), estimate = unname(coef(fit)),
+                    conf_low = ci[, 1], conf_high = ci[, 2], row.names = NULL)
+  out[!grepl("^factor\\(run\\)", out$term), ]
 }
 
-#' Broad minus narrow within each backlash setting: Welch t-test,
-#' mean difference with 95% CI, Cohen's d, Holm-adjusted p-value.
+#' Broad minus narrow within each backlash setting: paired t-test (runs
+#' are matched by seed), mean difference with 95% CI, paired Cohen's d
+#' (d_z), Holm-adjusted p-value.
 compare_campaigns <- function(data, outcome) {
   rows <- lapply(levels(data$backlash), function(b) {
     d <- data[data$backlash == b, ]
-    narrow <- d[[outcome]][d$campaign == levels(d$campaign)[1]]
-    broad <- d[[outcome]][d$campaign == levels(d$campaign)[2]]
-    tt <- t.test(broad, narrow)
+    d <- d[order(d$run), ]
+    lv <- levels(d$campaign)
+    narrow <- d[d$campaign == lv[1], ]
+    broad <- d[d$campaign == lv[2], ]
+    stopifnot(identical(narrow$run, broad$run))  # every run in both groups
+    narrow <- narrow[[outcome]]
+    broad <- broad[[outcome]]
+    tt <- t.test(broad, narrow, paired = TRUE)
     data.frame(backlash = b, mean_narrow = mean(narrow),
                mean_broad = mean(broad), difference = mean(broad) - mean(narrow),
                ci_low = tt$conf.int[1], ci_high = tt$conf.int[2],
-               cohens_d = cohens_d(broad, narrow), p_value = tt$p.value)
+               cohens_d = cohens_d_paired(broad, narrow), p_value = tt$p.value)
   })
   out <- do.call(rbind, rows)
   out$p_holm <- p.adjust(out$p_value, method = "holm")
