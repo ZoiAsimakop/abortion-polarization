@@ -9,3 +9,11 @@ Each simulated person has an acceptance threshold: the range of circumstances (f
 Activists campaign with either a narrow framing (rape and health cases) or a broad framing (any reason). We simulate both and test which leads to more support and more polarization.
 
 This is an explanatory model of how opinions could change, not a prediction about real people.
+
+## Dependencies
+
+Install the required R packages once:
+
+```r
+install.packages("ggplot2")
+```
