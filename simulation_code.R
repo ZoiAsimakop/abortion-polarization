@@ -101,7 +101,7 @@ initialize_population <- function(p) {
 }
 
 # ----------------------------------------------------------------------
-# 3. UPDATE ONE TIME STEP
+# 3. UPDATE ONE TIME STEP (Attempt at pull request)
 # ----------------------------------------------------------------------
 simulation_step <- function(a, p) {
   old <- a
