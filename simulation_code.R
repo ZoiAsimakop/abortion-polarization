@@ -1,29 +1,13 @@
 # ======================================================================
 # ABORTION-OPINION SIMULATION WITH INTERACTIVE OPINION MOTION
 # ======================================================================
-# SETUP IN RSTUDIO
-# 1. Save this entire script as app.R in an RStudio project.
-# 2. Install once in the Console:
-#    install.packages(c("shiny", "plotly"))
-# 3. Open app.R, click Run App, then Run simulation inside the app.
-#
-# MODEL: one simplified legal-abortion-access opinion per person.
-# -1 = restrictive/pro-life policy endpoint
-# +1 = permissive/pro-choice policy endpoint
-# These labels do not capture all moral views or policy exceptions.
-# This is a conceptual model, not a calibrated prediction. No regression.
-#
-# NEW VISUALIZATION: Opinion motion
-# Horizontal position = opinion; vertical position = fixed display lane.
-# People move horizontally, not through a modeled physical/social space.
-# Trails are opinion histories, NOT social-network edges.
-# Play the time slider to animate a saved run; this does not change the model.
-#
-# R BASICS: <- assigns; $ selects a table column or list element.
-# A data.frame is a table, here one row per agent.
-# Vector operations calculate for many agents at once.
-# TRUE/FALSE act as 1/0 in multiplication.
-# ======================================================================
+
+install.packages("shiny")
+install.packages("plotly")
+library(shiny)
+library(plotly) # Adds interactive hover, zoom, and click behavior to plots.
+
+
 install.packages("shiny")
 install.packages("plotly")
 library(shiny)
@@ -38,7 +22,7 @@ clip <- function(x, lower = 0, upper = 1) {
 }
 
 # Color is based on CURRENT opinion, not fixed orientation or agent role.
-# Restrictive opinions are orange, neutral opinions light, permissive purple.
+# Pro-life opinions are orange, neutral opinions light, pro-choice purple.
 # A palette of 201 colors maps the -1 to +1 scale into integer indices.
 opinion_colors <- function(opinion) {
   palette <- colorRampPalette(c("#C65D24", "#E1E5EB", "#6550C8"))(201)
@@ -87,16 +71,17 @@ initialize_population <- function(p) {
     activist[ids] <- TRUE
   }
   
-  # Persistent differences in baseline attention preserve heterogeneity.
-  baseline_attention <- runif(n, 0.1, 0.3)
+  # Persistent differences in baseline involvement preserve heterogeneity.
+  baseline_involvement <- runif(n, 0.1, 0.3)
   data.frame(
     id = seq_len(n), restrictive = restrictive,
     initial_opinion = opinion, opinion = opinion,
     conviction = conviction, bound = bound,
     open_minded = open_minded, zealot = zealot, activist = activist,
-    baseline_attention = baseline_attention, attention = baseline_attention,
-    involvement = runif(n, 0.1, 0.3),
-    campaign_exposure = 0L, information_exposure = 0L
+    baseline_involvement = baseline_involvement,
+    involvement = baseline_involvement,
+    campaign_exposure = 0L,
+    information_exposure = 0L
   )
 }
 
@@ -111,14 +96,13 @@ simulation_step <- function(a, p) {
   # Visibility depends on actual activist prevalence, not requested prevalence.
   # The factor 4 is an arbitrary prototype scale, not empirical calibration.
   visibility <- clip(mean(old$activist) * p$intensity * 4)
-  # Extra restrictive-group attention is optional and an explicit assumption.
-  target_attention <- clip(old$baseline_attention + visibility *
-                             (1 + p$extra_attention * old$restrictive))
-  a$attention <- clip(old$attention + 0.2 *
-                        (target_attention - old$attention))
-  # Involvement follows old attention more slowly than attention changes.
-  a$involvement <- clip(old$involvement + 0.05 *
-                          (old$attention - old$involvement))
+  # Campaign visibility raises involvement equally above each person's baseline.
+  target_involvement <- clip(
+    old$baseline_involvement + visibility
+  )
+  a$involvement <- clip(
+    old$involvement + 0.2 * (target_involvement - old$involvement)
+  )
   
   # Stronger conviction reduces movement. Involvement increases engagement.
   # Conviction and confidence bounds are fixed in this initial model.
@@ -130,13 +114,13 @@ simulation_step <- function(a, p) {
   partner <- ((seq_len(n) - 1L +
                  sample.int(n - 1L, n, replace = TRUE)) %% n) + 1L
   difference <- old$opinion[partner] - old$opinion
-  noticed <- runif(n) < old$attention
+  noticed <- runif(n) < old$involvement
   accepted <- abs(difference) <= old$bound
   social_change <- responsiveness * difference * noticed * accepted
   # Rejected ordinary contact has no effect; no repulsion is implied.
   
   # B. Fixed campaign message, separate from activists' personal opinions.
-  saw_campaign <- runif(n) < old$attention * visibility
+  saw_campaign <- runif(n) < old$involvement * visibility
   campaign_difference <- p$campaign_side - old$opinion
   accepted_campaign <- abs(campaign_difference) <= old$bound
   campaign_change <- responsiveness * campaign_difference *
@@ -151,7 +135,7 @@ simulation_step <- function(a, p) {
   }
   
   # C. External message position is a policy signal, NOT a truth score.
-  saw_information <- runif(n) < old$attention * p$information_rate
+  saw_information <- runif(n) < old$involvement * p$information_rate
   information_difference <- p$information_position - old$opinion
   accepted_information <- abs(information_difference) <= old$bound
   information_change <- responsiveness * p$information_uptake *
@@ -180,7 +164,7 @@ population_measures <- function(a, time) {
              mean_opinion = mean(a$opinion), # Overall direction of policy support.
              dispersion = sd(a$opinion),    # Spread, not proof of two opposing camps.
              extreme_share = mean(abs(a$opinion) >= 0.8), # Explicit chosen threshold.
-             group_gap = gap, attention = mean(a$attention),
+             group_gap = gap,
              involvement = mean(a$involvement))
 }
 
@@ -197,10 +181,12 @@ run_simulation <- function(p) {
     measures[[t + 1L]] <- population_measures(a, t)
   }
   # Basic safeguards; these are implementation checks, not model validation.
-  stopifnot(all(is.finite(a$opinion)), all(abs(a$opinion) <= 1),
-            all(a$opinion[a$zealot] == a$initial_opinion[a$zealot]),
-            all(a$attention >= 0 & a$attention <= 1),
-            all(a$involvement >= 0 & a$involvement <= 1))
+  stopifnot(
+    all(is.finite(a$opinion)),
+    all(abs(a$opinion) <= 1),
+    all(a$opinion[a$zealot] == a$initial_opinion[a$zealot]),
+    all(a$involvement >= 0 & a$involvement <= 1)
+  )
   list(history = history, measures = do.call(rbind, measures), settings = p)
 }
 
@@ -257,7 +243,6 @@ build_motion_plot <- function(r, time, show_trails, trail_steps, point_size) {
       "<br>Conviction: ", sprintf("%.2f", a$conviction[ids]),
       "<br>Confidence bound: ", sprintf("%.2f", a$bound[ids]),
       "<br>Open-minded: ", ifelse(a$open_minded[ids], "yes", "no"),
-      "<br>Attention: ", sprintf("%.2f", a$attention[ids]),
       "<br>Involvement: ", sprintf("%.2f", a$involvement[ids]))
     fig <- add_trace(fig, x = a$opinion[ids], y = lane[ids],
                      type = "scatter", mode = "markers", name = label,
@@ -273,7 +258,7 @@ build_motion_plot <- function(r, time, show_trails, trail_steps, point_size) {
   fig <- layout(fig,
                 title = list(text = paste("Opinion motion — step", time), x = 0.02),
                 paper_bgcolor = "#FFFFFF", plot_bgcolor = "#F7F9FC",
-                xaxis = list(title = "Opinion: restrictive / pro-life ← → permissive / pro-choice",
+                xaxis = list(title = "Opinion: Pro-life ← → Pro-choice",
                              range = c(-1.08, 1.08), tickvals = c(-1, -0.5, 0, 0.5, 1),
                              zeroline = TRUE, zerolinecolor = "#98A2B3"),
                 yaxis = list(title = "", range = c(0, 1), showticklabels = FALSE,
@@ -291,7 +276,7 @@ build_motion_plot <- function(r, time, show_trails, trail_steps, point_size) {
 # IDs connect controls to input$... and output placeholders to output$....
 ui <- fluidPage(
   titlePanel("Abortion opinions: a polarization simulation"),
-  p("Simplified legal-access scale: −1 = restrictive/pro-life; +1 = permissive/pro-choice. An illustrative model, not a prediction."),
+  p("Simplified legal-access scale: −1 = pro-life; +1 = pro-choice. An illustrative model, not a prediction."),
   sidebarLayout(
     sidebarPanel(
       numericInput("n", "Number of agents", 200, min = 50, max = 1000, step = 50),
@@ -299,16 +284,15 @@ ui <- fluidPage(
       numericInput("seed", "Random seed", 42, min = 1, max = 1000000),
       sliderInput("conviction", "Typical conviction", 0, 0.9, 0.5, step = 0.05),
       sliderInput("bound", "Ordinary confidence bound", 0.05, 2, 0.6, step = 0.05),
-      sliderInput("open_share", "Open-minded share (double bound, capped at 2)", 0, 1, 0.25, step = 0.05),
-      sliderInput("zealot_share", "Zealot share (balanced endpoints)", 0, 0.4, 0.1, step = 0.05),
-      selectInput("campaign_side", "Campaign position", c("Pro-choice / permissive" = "1", "Pro-life / restrictive" = "-1")),
-      sliderInput("activist_share", "Requested activist share", 0, 0.4, 0.1, step = 0.05),
+      sliderInput("open_share", "Open-minded agent share", 0, 1, 0.25, step = 0.05),
+      sliderInput("zealot_share", "Zealot share", 0, 0.4, 0.1, step = 0.05),
+      selectInput("campaign_side", "Campaign position", c("Pro-choice" = "1", "Pro-life" = "-1")),
+      sliderInput("activist_share", "Activist share", 0, 0.4, 0.1, step = 0.05),
       sliderInput("intensity", "Campaign intensity", 0, 1, 0.5, step = 0.05),
-      sliderInput("extra_attention", "Extra restrictive-group attention (assumption)", 0, 2, 0, step = 0.1),
       checkboxInput("backlash", "Enable backlash to rejected campaign messages", FALSE),
       sliderInput("backlash_strength", "Backlash strength", 0, 1, 0.5, step = 0.05),
       sliderInput("information_rate", "External information exposure rate", 0, 1, 0.2, step = 0.05),
-      sliderInput("information_position", "External message position (not accuracy)", -1, 1, 0, step = 0.1),
+      sliderInput("information_position", "External message position (-1 = pro-life, +1 = pro-choice", -1, 1, 0, step = 0.1),
       sliderInput("information_uptake", "External information uptake", 0, 1, 0.5, step = 0.05),
       actionButton("run", "Run simulation", class = "btn-primary"),
       p("Settings take effect when you click Run simulation.")
@@ -329,11 +313,10 @@ ui <- fluidPage(
                    column(4, sliderInput("trail_steps", "Trail length (steps)", 1, 30, 10, step = 1)),
                    column(4, sliderInput("point_size", "Agent size", 4, 14, 8, step = 1))),
                  plotlyOutput("motion", height = "550px"),
-                 p("Orange = restrictive, purple = permissive. Shape shows role. Hover for traits; click an agent for details. Zoom with the mouse or toolbar; double-click to reset."),
+                 p("Orange = pro-life, purple = pro-choice. Shape shows role. Hover for traits; click an agent for details. Zoom with the mouse or toolbar; double-click to reset."),
                  p("Vertical position is only a fixed display lane. Trails show each person's opinion history, NOT social ties. This is not a network layout."),
                  verbatimTextOutput("selected_agent")),
         tabPanel("Opinions", verbatimTextOutput("summary"), plotOutput("distribution")),
-        tabPanel("Dynamics", plotOutput("dynamics", height = "650px")),
         tabPanel("Agents", tableOutput("agents"),
                  downloadButton("download", "Download selected agent snapshot")),
         tabPanel("Model rules", tags$ul(
@@ -341,8 +324,8 @@ ui <- fluidPage(
           tags$li("Conviction reduces movement; confidence bounds determine acceptance."),
           tags$li("Open-minded agents have wider bounds; zealots' opinions stay fixed."),
           tags$li("A single campaign supports either endpoint. Its activists generate visibility."),
-          tags$li("Attention responds to visibility; involvement follows attention slowly."),
-          tags$li("Extra restrictive-group attention and backlash are optional assumptions, not established facts."),
+          tags$li("Involvement responds to campaign visibility and increases both message noticing and responsiveness."),
+          tags$li("Campaign backlash is an optional assumption, not an established fact."),
           tags$li("Rejection ordinarily has no effect. Optional campaign backlash produces repulsion."),
           tags$li("External information is a policy signal, not a factual-accuracy score."),
           tags$li("Initial differences across fixed orientation groups are programmed, not calibrated."),
@@ -378,7 +361,7 @@ server <- function(input, output, session) {
               bound = input$bound, open_share = input$open_share,
               zealot_share = input$zealot_share, campaign_side = as.numeric(input$campaign_side),
               activist_share = input$activist_share, intensity = input$intensity,
-              extra_attention = input$extra_attention, backlash = input$backlash,
+              backlash = input$backlash,
               backlash_strength = input$backlash_strength, information_rate = input$information_rate,
               information_position = input$information_position,
               information_uptake = input$information_uptake)
@@ -442,7 +425,7 @@ server <- function(input, output, session) {
         "\nInitial opinion:", round(person$initial_opinion, 3),
         " | Current opinion:", round(person$opinion, 3),
         "\nConviction:", round(person$conviction, 2), " | Bound:", round(person$bound, 2),
-        "\nAttention:", round(person$attention, 2), " | Involvement:", round(person$involvement, 2),
+        "\nInvolvement:", round(person$involvement, 2),
         "\nOpen-minded:", person$open_minded, " | Zealot:", person$zealot,
         " | Activist:", person$activist,
         "\nCampaign messages noticed:", person$campaign_exposure,
@@ -455,36 +438,16 @@ server <- function(input, output, session) {
         "\nOpinion dispersion (SD):", round(m$dispersion, 3),
         "\nExtreme share (absolute opinion >= 0.8):", round(100 * m$extreme_share, 1), "%",
         "\nFixed-orientation group gap:", round(m$group_gap, 3),
-        "\nMean attention:", round(m$attention, 3),
         "\nMean involvement:", round(m$involvement, 3), "\n")
   })
   output$distribution <- renderPlot({
     hist(snapshot()$opinion, breaks = seq(-1, 1, length.out = 21),
          xlim = c(-1, 1), col = "steelblue", border = "white",
          main = paste("Opinion distribution: time", selected_time()),
-         xlab = "Restrictive / pro-life (-1) to permissive / pro-choice (+1)")
+         xlab = "Pro-life (-1) to Pro-choice (+1)")
     abline(v = 0, lty = 2)
   })
   
-  output$dynamics <- renderPlot({
-    req(result())
-    m <- result()$measures
-    previous <- par(mfrow = c(3, 1), mar = c(4, 4, 2, 1))
-    on.exit(par(previous))
-    plot(m$time, m$mean_opinion, type = "l", ylim = c(-1, 1),
-         xlab = "Time step", ylab = "Mean opinion", main = "Overall policy opinion")
-    abline(h = 0, lty = 2, col = "gray")
-    abline(v = selected_time(), lty = 3, col = "#6550C8")
-    plot(m$time, m$dispersion, type = "l", ylim = c(0, 1.1),
-         xlab = "Time step", ylab = "Opinion SD", main = "Opinion dispersion")
-    abline(v = selected_time(), lty = 3, col = "#6550C8")
-    matplot(m$time, m[c("attention", "involvement")], type = "l", lty = 1,
-            col = c("steelblue", "darkorange"), ylim = c(0, 1),
-            xlab = "Time step", ylab = "Population mean")
-    abline(v = selected_time(), lty = 3, col = "#6550C8")
-    legend("topright", c("Attention", "Involvement"), lty = 1,
-           col = c("steelblue", "darkorange"), bty = "n")
-  })
   output$agents <- renderTable({ head(snapshot(), 12) }, digits = 3)
   
   # Export every agent at the selected time, with all stored run settings.
