@@ -12,7 +12,7 @@ This is an explanatory model of how opinions *could* change under its assumption
 
 > *"This is a community where we love to discuss abortion and polarize about it. [...] We are not so excited about the issue of abortion as much as about the sheer thrill of hating on each other and telling our neighbours that they are surely wrong about everything they believe in!"*
 
-Our Shiny app lets you visit this town and watch its inhabitants polarize, or not, as you move the sliders. Start it in RStudio with `shiny::runApp(shiny::shinyAppFile("simulation_code.R"))`, and read the town's own guided tour in **[docs/app_guide.md](docs/app_guide.md)** (also included at the end of `main.qmd`).
+Our Shiny app lets you visit this town and watch its inhabitants polarize, or not, as you move the sliders. Start it in RStudio with `shiny::runApp(shiny::shinyAppFile("simulation_code.R"))`, and read the town's own guided tour in [**docs/app_guide.md**](docs/app_guide.md) (also included at the end of `main.qmd`).
 
 ## How the model works
 
@@ -25,15 +25,17 @@ Our Shiny app lets you visit this town and watch its inhabitants polarize, or no
 - [R](https://cran.r-project.org/) (≥ 4.2) and [RStudio](https://posit.co/download/rstudio-desktop/) (includes Quarto)
 - R packages, installed once in the R Console:
 
-```r
+``` r
 install.packages(c("ggplot2", "scales", "knitr", "rmarkdown", "shiny", "plotly", "testthat"))
 ```
+
+Or, to install the exact package versions we used, run `renv::restore()` in the R Console after opening the project.
 
 ### 2. Get the project
 
 Clone the repository and open `abortion-polarization.Rproj` in RStudio:
 
-```bash
+``` bash
 git clone https://github.com/ZoiAsimakop/abortion-polarization.git
 ```
 
@@ -43,7 +45,7 @@ Open `main.qmd` and click **Render**. It explains the model, shows an example ru
 
 ### 4. Explore the app
 
-```r
+``` r
 shiny::runApp(shiny::shinyAppFile("simulation_code.R"))
 ```
 
@@ -51,7 +53,7 @@ Or open `simulation_code.R` and click **Run App**. See the town of Haters guide 
 
 ## Repository structure
 
-```
+```         
 abortion-polarization/
 ├── main.qmd                   # main deliverable: model, experiment, results
 ├── simulation_code.R          # the model (sections 1–4) and the Shiny app
