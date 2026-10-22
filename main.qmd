@@ -1,43 +1,181 @@
 ---
 title: "Abortion and Polarization"
-subtitle: "An agent-based model of framing and opinion dynamics"
-author: 
-- Vanessa Filip 
-- Soma Breitner
-- Zoi Asimakopoulou
-format: html
+subtitle: "An agent-based model of campaign intensity, backlash and polarization"
+author:
+  - Vanessa Filip
+  - Soma Breitner
+  - Zoi Asimakopoulou
+date: last-modified
+format:
+  html:
+    toc: true
+    number-sections: true
+    code-fold: true
+    code-summary: "Show code"
+    embed-resources: true
+execute:
+  warning: false
+  message: false
 bibliography: references.bib
+nocite: | 
+ @vandermaas2024
 ---
 
 ## Introduction
 
-*What the project is about and the main research question.*
+Abortion is one of the most persistently divisive issues in public opinion [@jelen2003]. Activists on both sides campaign to win people over, but campaigns do not always persuade: a message that feels too far from one's own view can be rejected, and sometimes it pushes people the other way. This *backlash* is related to psychological reactance, the motivation to restore a sense of freedom when someone tries to change our mind [@brehm1966], and experiments show that extreme protest tactics can reduce support for a movement [@feinberg2020].
+
+We built an agent-based simulation to explore how these mechanisms could shape polarization. Our research question is:
+
+> **How do campaign intensity (weak vs. strong) and backlash (off vs. on) affect a campaign's effect on opinions and the polarization of opinions about abortion?**
+
+We expected that without backlash, a campaign moves opinions slightly toward its side, while with backlash, a strong campaign pushes many people away from its message and increases polarization.
+
+The simulation is an explanatory model: it shows what *could* happen under its assumptions, not a prediction about real people.
+
+Want to play with the model first? Jump to [the town of Haters](#explore-the-model-yourself-welcome-to-the-town-of-haters) at the end, a guided tour of the interactive app.
 
 ## Setup
 
+All functions live in `src/` and are loaded here. The model itself lives in `simulation_code.R`, which also contains the Shiny app (see the last section).
+
 ```{r setup}
-#| message: false
 library(ggplot2)
-# Load all functions from src/ and analysis/
-for (f in list.files(c("src", "analysis"), pattern = "\\.R$", full.names = TRUE)) {
-  source(f)
-}
+for (f in list.files("src", pattern = "\\.R$", full.names = TRUE)) source(f)
+load_model(find_model_file())   # loads the model functions without starting the app
 ```
 
-## 1. The simulation
+## The model
 
-*How the model works: agents, thresholds, framing.*
+The model builds on bounded-confidence models of opinion dynamics [@deffuant2000; @hegselmann2002], in which people are only influenced by opinions that are close enough to their own, and adds zealots, activist campaigns and backlash [@flache2017; @mobilia2003].
 
-## 2. Running the experiments
+**Agents.** The population consists of 200 agents. Each holds an opinion on a scale from −1 (pro-life) to +1 (pro-choice). Initial opinions are drawn around −0.35 or +0.35, so the population starts mildly divided but overlapping. Each agent also has:
 
-*Run the simulation across framing conditions and seeds.*
+- a **conviction** (around 0.5): the stronger it is, the less the agent's opinion changes;
+- a **confidence bound** (0.4): the maximum distance between their own opinion and a message they are willing to accept. Open-minded agents (10%) have a bound twice as large;
+- an **involvement** level that rises when a campaign is visible and makes the agent notice and respond to messages more.
 
-## 3. Analysis
+**Zealots** (10% of agents) hold a fixed opinion at −1 or +1 and never change, but they still influence others. **Activists** (10%) support the campaign and make it visible.
 
-*Regression of polarization on framing, with plots.*
+**Each time step**, every agent:
 
-## 4. Discussion
+1. meets one random other agent and moves partway toward their opinion, *if* the difference is within its confidence bound;
+2. may notice the campaign message (+1, pro-choice). If the message is within its bound, the agent moves toward it. If it is outside the bound, the agent ignores it, **unless backlash is switched on: then the agent moves *away* from the message**.
 
-*What the results mean and the model's limitations.*
+Campaign **intensity** controls how visible the campaign is, and therefore how many agents notice it.
+
+```{r parameters}
+p <- default_base_params()
+knitr::kable(
+  data.frame(Setting = c("Agents", "Time steps", "Typical conviction", "Confidence bound",
+                         "Open-minded share", "Zealot share", "Activist share",
+                         "Backlash strength", "Campaign position"),
+             Value = c(p$n, p$steps, p$conviction, p$bound, p$open_share,
+                       p$zealot_share, p$activist_share, p$backlash_strength,
+                       "+1 (pro-choice)")),
+  caption = "Settings used in all simulations.")
+```
+
+## What polarization looks like in one run
+
+Before the full experiment, here is a single run with a strong campaign, once with backlash off and once with backlash on. Both runs start from exactly the same population.
+
+```{r example-run}
+#| fig-cap: "Opinions of non-zealot agents at the start and at the end of one run. Grey = start, pink = end."
+#| fig-height: 5.5
+example <- run_example_pair(intensity = 0.75, seed = 1)
+plot_opinion_distributions(example)
+```
+
+Without backlash, opinions converge toward the middle. With backlash, most agents end up at one of the two extremes, mostly on the pro-life side, away from the campaign's message.
+
+## The experiment
+
+To test the research question systematically, we ran a 2 × 2 design plus a control:
+
+- **No campaign** (control)
+- **Weak campaign** (intensity 0.25) and **strong campaign** (intensity 0.75)
+- each with **backlash off** and **backlash on**
+
+Each condition was run **100 times for 300 time steps**. The same 100 random seeds were used in every condition, so each run can be compared with its matching control run (a paired design). We measured three outcomes among non-zealot agents at the last time step:
+
+- **shift toward the campaign**: how far opinions moved toward the campaign's side;
+- **opinion SD**: how spread out opinions are;
+- **share of extreme opinions** (|opinion| ≥ 0.8).
+
+As a robustness check, the whole experiment was repeated with a wider confidence bound (0.6).
+
+Running everything takes about 8 minutes, so the results are saved in `data/`. The chunk below only runs the experiment if those files are missing.
+
+```{r experiment}
+needed <- file.path("data", c("experiment_final.csv", "experiment_trajectories.csv",
+                              "sensitivity_final.csv"))
+if (!all(file.exists(needed))) {
+  run_full_experiment(n_runs = 100, steps = 300, run_sensitivity = TRUE)
+}
+res <- build_results("data")
+```
+
+## Results
+
+The text below is generated directly from the saved results, so every number matches the data. We report effect sizes and confidence intervals rather than *p*-values, because in simulation studies *p*-values mainly reflect the number of runs [@morris2019].
+
+```{r results-text}
+#| results: asis
+cat(res$text)
+```
+
+```{r tbl-effects}
+#| tbl-cap: "Campaign effect compared with the matching no-campaign run (mean over 100 runs)."
+knitr::kable(res$tables$campaign_effects)
+```
+
+```{r tbl-contrasts}
+#| tbl-cap: "Backlash on minus backlash off, per campaign intensity (paired over runs)."
+knitr::kable(res$tables$backlash_contrasts)
+```
+
+```{r fig-shift}
+#| fig-cap: "Shift toward the campaign's side compared with the control. Each point is one run."
+res$plots$shift
+```
+
+```{r fig-spread}
+#| fig-cap: "Spread of opinions (SD) compared with the control. Each point is one run."
+res$plots$spread
+```
+
+```{r fig-shift-time}
+#| fig-cap: "Shift toward the campaign over time (mean across runs)."
+res$plots$shift_time
+```
+
+```{r fig-run-length}
+#| fig-cap: "Spread of opinions over time in every condition, to check whether 300 steps is long enough."
+res$plots$run_length
+```
+
+## Further limitations
+
+In addition to the limitations discussed above (backlash as an assumption, settings not estimated from data):
+
+- **Random mixing.** Agents meet random others; real people mostly talk to friends and family who often share their views.
+- **One campaign, one opinion.** Real abortion attitudes depend on circumstances (e.g. rape or health risks), and campaigns on both sides often happen at the same time.
+
+## Explore the model yourself: welcome to the town of Haters!
+
+The Shiny app lets you change all settings and watch opinions move over time. Run the chunk below in RStudio (it is not run when rendering), or open `simulation_code.R` and click **Run App**.
+
+```{r app}
+#| eval: false
+shiny::runApp(shiny::shinyAppFile("simulation_code.R"))
+```
+
+Below is a (very) playful guide to the app, written by Soma Breitner and narrated by the inhabitants of the simulated town themselves. It explains every slider and suggests settings to try.
+
+{{< include docs/app_guide.md >}}
 
 ## References
+
+::: {#refs}
+:::
