@@ -1,0 +1,6 @@
+model_file: simulation_code.R
+model_md5: 5bf53022aa5b5e80b24d7888e64e9614
+n_runs: 100
+steps: 300
+sensitivity_bound: 0.6
+base_params: list(n = 200, steps = 300, conviction = 0.5, bound = 0.4, open_share = 0.1,      zealot_share = 0.1, activist_share = 0.1, backlash_strength = 0.5,      information_rate = 0, information_position = 0, information_uptake = 0.5,      campaign_side = 1)
