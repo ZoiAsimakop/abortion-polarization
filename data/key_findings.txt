@@ -1,0 +1,4 @@
+Without backlash, the mean shift toward the campaign's side was only M = 0.05 for the strong campaign. With backlash, the effect was reversed (M = −0.72).
+Compared with backlash off, backlash increased polarization: with a strong campaign, 94% of non-zealot agents held extreme opinions with backlash, compared with 12% without backlash and 4% in the control condition.
+The strong campaign had a larger backlash effect than the weak campaign (M = −0.72 vs. M = −0.22).
+These are results from a simulation model, not evidence about real campaigns.
