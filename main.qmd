@@ -17,6 +17,8 @@ execute:
   warning: false
   message: false
 bibliography: references.bib
+nocite: | 
+ @vandermaas2024
 ---
 
 ## Introduction

@@ -32,6 +32,7 @@ You opened the Shiny app? Great! Isn't it beautiful?
 
 - You might sometimes get surprising effects. In these cases, it is good to tinker with several sliders and see if you can get the effect you are looking for. Since our town's research question was about backlash, it often helps to turn on backlash when you want to see a polarization effect.
 - Most of the time without backlash, a lot of agents won't polarize. This is realistic: even though we are the Hater town, most people in society are probably content being part of the silent neutral majority, but our best Haters will make sure their voices are heard and make it seem like the world is extremely polarized.
+- To inspire our hate, we studied the book [*Complex Systems Research in Psychology*](https://santafeinstitute.github.io/ComplexPsych/) by Han van der Maas (2024). Even Haters need a good textbook.
 
 #### Visual beauty and tabs
 
