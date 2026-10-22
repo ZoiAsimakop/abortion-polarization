@@ -289,7 +289,7 @@ ui <- fluidPage(
       selectInput("campaign_side", "Campaign position", c("Pro-choice" = "1", "Pro-life" = "-1")),
       sliderInput("activist_share", "Activist share", 0, 0.4, 0.1, step = 0.05),
       sliderInput("intensity", "Campaign intensity", 0, 1, 0.5, step = 0.05),
-      checkboxInput("backlash", "Enable backlash to rejected campaign messages", FALSE),
+      checkboxInput("backlash", "Enable backlash to reject campaign messages", FALSE),
       sliderInput("backlash_strength", "Backlash strength", 0, 1, 0.5, step = 0.05),
       sliderInput("information_rate", "External information exposure rate", 0, 1, 0, step = 0.05),
       sliderInput("information_position", "External message position (-1 = pro-life, +1 = pro-choice)", -1, 1, 0, step = 0.1),
@@ -313,25 +313,12 @@ ui <- fluidPage(
                    column(4, sliderInput("trail_steps", "Trail length (steps)", 1, 30, 10, step = 1)),
                    column(4, sliderInput("point_size", "Agent size", 4, 14, 8, step = 1))),
                  plotlyOutput("motion", height = "550px"),
-                 p("Orange = pro-life, purple = pro-choice. Shape shows role. Hover for traits; click an agent for details. Zoom with the mouse or toolbar; double-click to reset."),
-                 p("Vertical position is only a fixed display lane. Trails show each person's opinion history, NOT social ties. This is not a network layout."),
+                 p("Orange = pro-life, purple = pro-choice. Shapes show role. Hover for traits; click an agent for details. Zoom with the mouse or toolbar; double-click to reset."),
+                 p("Trails show each person's opinion history."),
                  verbatimTextOutput("selected_agent")),
         tabPanel("Opinions", verbatimTextOutput("summary"), plotOutput("distribution")),
         tabPanel("Agents", tableOutput("agents"),
-                 downloadButton("download", "Download selected agent snapshot")),
-        tabPanel("Model rules", tags$ul(
-          tags$li("Random social partners; accepted contacts produce convergence."),
-          tags$li("Conviction reduces movement; confidence bounds determine acceptance."),
-          tags$li("Open-minded agents have wider bounds; zealots' opinions stay fixed."),
-          tags$li("A single campaign supports either endpoint. Its activists generate visibility."),
-          tags$li("Involvement responds to campaign visibility and increases both message noticing and responsiveness."),
-          tags$li("Campaign backlash is an optional assumption, not an established fact."),
-          tags$li("Rejection ordinarily has no effect. Optional campaign backlash produces repulsion."),
-          tags$li("External information is a policy signal, not a factual-accuracy score."),
-          tags$li("Initial differences across fixed orientation groups are programmed, not calibrated."),
-          tags$li("Dispersion and extremity alone do not establish opposing camps."),
-          tags$li("Opinion motion displays the existing model history; display settings do not affect the model."),
-          tags$li("No fixed social network, regression, or hysteresis test is included.")))
+                 downloadButton("download", "Download selected agent snapshot"))
       )
     )
   )
