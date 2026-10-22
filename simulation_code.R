@@ -1,31 +1,7 @@
 # ======================================================================
 # ABORTION-OPINION SIMULATION WITH INTERACTIVE OPINION MOTION
 # ======================================================================
-# SETUP IN RSTUDIO
-# 1. Save this entire script as app.R in an RStudio project.
-# 2. Install once in the Console:
-#    install.packages(c("shiny", "plotly"))
-# 3. Open app.R, click Run App, then Run simulation inside the app.
-#
-# MODEL: one simplified legal-abortion-access opinion per person.
-# -1 = restrictive/pro-life policy endpoint
-# +1 = permissive/pro-choice policy endpoint
-# These labels do not capture all moral views or policy exceptions.
-# This is a conceptual model, not a calibrated prediction. No regression.
-#
-# NEW VISUALIZATION: Opinion motion
-# Horizontal position = opinion; vertical position = fixed display lane.
-# People move horizontally, not through a modeled physical/social space.
-# Trails are opinion histories, NOT social-network edges.
-# Play the time slider to animate a saved run; this does not change the model.
-#
-# R BASICS: <- assigns; $ selects a table column or list element.
-# A data.frame is a table, here one row per agent.
-# Vector operations calculate for many agents at once.
-# TRUE/FALSE act as 1/0 in multiplication.
-# ======================================================================
-install.packages("shiny")
-install.packages("plotly")
+
 library(shiny)
 library(plotly) # Adds interactive hover, zoom, and click behavior to plots.
 # ----------------------------------------------------------------------
@@ -316,7 +292,7 @@ ui <- fluidPage(
       checkboxInput("backlash", "Enable backlash to rejected campaign messages", FALSE),
       sliderInput("backlash_strength", "Backlash strength", 0, 1, 0.5, step = 0.05),
       sliderInput("information_rate", "External information exposure rate", 0, 1, 0, step = 0.05),
-      sliderInput("information_position", "External message position (-1 = pro-life, +1 = pro-choice", -1, 1, 0, step = 0.1),
+      sliderInput("information_position", "External message position (-1 = pro-life, +1 = pro-choice)", -1, 1, 0, step = 0.1),
       sliderInput("information_uptake", "External information uptake", 0, 1, 0.5, step = 0.05),
       actionButton("run", "Run simulation", class = "btn-primary"),
       p("Settings take effect when you click Run simulation.")
